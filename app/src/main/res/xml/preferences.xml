@@ -1,0 +1,15 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="General">
+
+        <com.example.harsh.quickshare.preference.CustomEditTextPreference
+            android:defaultValue="@string/pref_devicename_default"
+            android:key="@string/pref_devicename_key"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/pref_devicename_title" />
+    </PreferenceCategory>
+
+</PreferenceScreen>
+

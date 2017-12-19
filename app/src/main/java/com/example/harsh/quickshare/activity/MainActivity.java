@@ -2,44 +2,34 @@ package com.example.harsh.quickshare.activity;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
-import android.os.Environment;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.design.widget.TabLayout;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
-import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-
-import android.widget.TextView;
 
 import com.example.harsh.quickshare.R;
 import com.example.harsh.quickshare.constants.Command;
-import com.example.harsh.quickshare.constants.DeviceFileType;
-import com.example.harsh.quickshare.exception.BroadcastAddressException;
 import com.example.harsh.quickshare.fragment.FilesFragment;
 import com.example.harsh.quickshare.fragment.HistoryFragment;
 import com.example.harsh.quickshare.fragment.TransfersFragment;
 import com.example.harsh.quickshare.info.DevicesInfo;
 import com.example.harsh.quickshare.type.Device;
 import com.example.harsh.quickshare.type.DeviceFile;
+import com.example.harsh.quickshare.type.TransferRequest;
 import com.example.harsh.quickshare.util.BroadcastUtils;
+import com.example.harsh.quickshare.util.DeviceUtils;
+import com.example.harsh.quickshare.util.FileTransferUtils;
 import com.google.gson.Gson;
 
-import java.io.File;
-import java.net.DatagramPacket;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,20 +48,25 @@ public class MainActivity extends AppCompatActivity
      */
     private SectionsPagerAdapter mSectionsPagerAdapter;
 
+
     /**
      * The {@link ViewPager} that will host the section contents.
      */
     private ViewPager mViewPager;
 
+    // Views
     private FilesFragment mFilesFragment;
     private TransfersFragment mTransfersFragment;
     private HistoryFragment mHistoryFragment;
 
+    // Utilities
     private BroadcastUtils broadcastUtils;
-
-    private DevicesInfo devicesInfo;
-
+    private DeviceUtils deviceUtils;
+    private FileTransferUtils fileTransferUtils;
     private Gson gson;
+
+    // Models
+    private DevicesInfo devicesInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -168,15 +163,13 @@ public class MainActivity extends AppCompatActivity
     // Initializes models and network
     public void init() {
         broadcastUtils = new BroadcastUtils(this);
+        deviceUtils = new DeviceUtils();
         gson = new Gson();
         devicesInfo = new DevicesInfo();
+        fileTransferUtils = new FileTransferUtils();
 
         broadcastUtils.startReceivingBroadcast();
         broadcastUtils.sendBroadcast(Command.NEW);
-    }
-
-    @Override
-    public void onFragmentInteraction(Uri uri) {
     }
 
     @Override
@@ -192,6 +185,8 @@ public class MainActivity extends AppCompatActivity
             sendPresence();
         } else if (data.startsWith(Command.PRESENT)) {
             handleNewDevice(hostAddress, data.substring(Command.PRESENT.length()));
+        } else if (data.startsWith(Command.SEND_FILE)) {
+            sendFile(data.substring(Command.SEND_FILE.length()));
         } else {
             Log.d(TAG, "Unknown data");
         }
@@ -202,7 +197,7 @@ public class MainActivity extends AppCompatActivity
         Device device = new Device();
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         device.setDeviceName(prefs.getString(getString(R.string.pref_devicename_key), getString(R.string.pref_devicename_default)));
-        device.setDeviceFiles(getFilesFromDevice());
+        device.setDeviceFiles(deviceUtils.getFilesFromDevice(this));
 
         String json = gson.toJson(device, Device.class);
         broadcastUtils.sendBroadcast(Command.PRESENT + json);
@@ -216,46 +211,67 @@ public class MainActivity extends AppCompatActivity
         mFilesFragment.addDeviceView(newDevice);
     }
 
-    /**
-     * Populates the list of shared files from the device based on preferences
-     *
-     * @return List of files present in the device
-     */
-    private List<DeviceFile> getFilesFromDevice() {
-        List<DeviceFile> filesList = new ArrayList<>();
-        // TODO: Get directory based on preferences
-        File directory = new File(Environment.getExternalStorageDirectory(), "/Music/");
-        if (directory != null) {
-            DeviceFile fileDirectory = new DeviceFile();
-            fileDirectory.setFileName(directory.getName());
-            fileDirectory.setPath(directory.getAbsolutePath());
-            fileDirectory.setFileType(DeviceFileType.DIRECTORY);
-            fileDirectory.setChildren(getFilesFromDirectory(directory));
-            filesList.add(fileDirectory);
+    // Begins the procedure for sending the file
+    private void sendFile(String json) {
+        final TransferRequest transferRequest = gson.fromJson(json, TransferRequest.class);
+        if (deviceUtils.getDeviceIPAddress(this).equals(transferRequest.getFromIPAddress())) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        fileTransferUtils.sendFile(transferRequest);
+                    } catch (IOException e) {
+                        Log.e(TAG, e.getMessage());
+                    }
+                }
+            }).start();
         }
-        return filesList;
     }
 
-    // Recursively gets files from a directory, sets the children if its a directory
-    private List<DeviceFile> getFilesFromDirectory(File directory) {
-        List<DeviceFile> filesList = new ArrayList<>();
-        if (directory != null) {
-            File[] files = directory.listFiles();
-            for (int i = 0; files != null && i < files.length; i++) {
-                DeviceFile deviceFile = new DeviceFile();
-                deviceFile.setFileName(files[i].getName());
-                deviceFile.setFileSize(files[i].length());
-                deviceFile.setPath(files[i].getAbsolutePath());
-
-                if (files[i].isDirectory()) {
-                    deviceFile.setFileType(DeviceFileType.DIRECTORY);
-                    deviceFile.setChildren(getFilesFromDirectory(files[i]));
-                } else {
-                    deviceFile.setFileType(DeviceFileType.FILE);
-                }
-                filesList.add(deviceFile);
-            }
+    @Override
+    public void downloadFile(final DeviceFile deviceFile) {
+        List<String> nodes = devicesInfo.getDeviceContainingFile(deviceFile);
+        // TODO: Update here once multiple nodes functionality is added
+        if (nodes.size() == 0) {
+            Log.e(TAG, "This file is not present in any devices");
+            return;
         }
-        return filesList;
+        List<TransferRequest> transferRequests = generateTransferRequests(nodes, deviceFile);
+        for (final TransferRequest transferRequest : transferRequests) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        fileTransferUtils.receiveFile(transferRequest);
+                    } catch (IOException e) {
+                        Log.e(TAG, e.getMessage());
+                    }
+                }
+            }).start();
+            sendDownloadRequest(transferRequest);
+        }
+        // Update file status view here
+    }
+
+    // Generates download requests to be sent to the devices
+    private List<TransferRequest> generateTransferRequests(List<String> nodes, DeviceFile deviceFile) {
+        List<TransferRequest> transferRequests = new ArrayList<>();
+
+        TransferRequest transferRequest = new TransferRequest();
+        transferRequest.setDeviceFile(deviceFile);
+        transferRequest.setFromIPAddress(nodes.get(0));
+        transferRequest.setToIPAddress(deviceUtils.getDeviceIPAddress(this));
+        transferRequest.setStartOffset(0L);
+        transferRequest.setSize(deviceFile.getFileSize());
+
+        transferRequests.add(transferRequest);
+        return transferRequests;
+    }
+
+    // Broadcasts download request along with command
+    private void sendDownloadRequest(TransferRequest transferRequest) {
+        String json = gson.toJson(transferRequest);
+        String message = Command.SEND_FILE + json;
+        broadcastUtils.sendBroadcast(message);
     }
 }

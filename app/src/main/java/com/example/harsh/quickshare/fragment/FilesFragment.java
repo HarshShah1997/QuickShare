@@ -1,14 +1,16 @@
 package com.example.harsh.quickshare.fragment;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.AlertDialog;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -17,11 +19,14 @@ import com.example.harsh.quickshare.activity.MainActivity;
 import com.example.harsh.quickshare.constants.DeviceFileType;
 import com.example.harsh.quickshare.type.Device;
 import com.example.harsh.quickshare.type.DeviceFile;
+import com.example.harsh.quickshare.type.FileTransferStatus;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -41,9 +46,10 @@ public class FilesFragment extends Fragment {
     private static final String COLLAPSE_INDICATOR = "v  ";
     private static final String SPACE_PER_INDENTATION = "  ";
 
-
     private FilesFragmentInteractionListener mListener;
     private LayoutInflater mLayoutInflator;
+
+    private Map<DeviceFile, ImageView> fileImageViewMap = new HashMap<>();
 
     public FilesFragment() {
         // Required empty public constructor
@@ -80,13 +86,6 @@ public class FilesFragment extends Fragment {
         return inflater.inflate(R.layout.fragment_files, container, false);
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
-    }
-
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
@@ -102,6 +101,35 @@ public class FilesFragment extends Fragment {
     public void onDetach() {
         super.onDetach();
         mListener = null;
+    }
+
+    /**
+     * Changes the icons displaying file status
+     *
+     * @param deviceFile The file whose status is to be updated
+     * @param status The status, must be a type of FileTransferStatus
+     */
+    public void updateFileStatusView(final DeviceFile deviceFile, final String status) {
+        if (deviceFile == null || status == null) {
+            return;
+        }
+
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                ImageView imageView = fileImageViewMap.get(deviceFile);
+                if (imageView == null) {
+                    return;
+                }
+                if (status.equals(FileTransferStatus.PROGRESS)) {
+                    imageView.setImageResource(R.mipmap.download_progress);
+                } else if (status.equals(FileTransferStatus.SUCCESS)) {
+                    imageView.setImageResource(R.mipmap.download_success);
+                } else if (status.equals(FileTransferStatus.FAILED)) {
+                    imageView.setImageResource(R.mipmap.download_failed);
+                }
+            }
+        });
     }
 
     /**
@@ -232,7 +260,7 @@ public class FilesFragment extends Fragment {
     }
 
     // Generates view for a file
-    private View generateFileView(DeviceFile deviceFile, int level) {
+    private View generateFileView(final DeviceFile deviceFile, int level) {
         LinearLayout fileLayout = new LinearLayout(getContext());
 
         View indentation = generateIndentation(FILE_TEXT_SIZE, level);
@@ -243,6 +271,27 @@ public class FilesFragment extends Fragment {
                 + generateFileSizeString(deviceFile.getFileSize()));
         textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, FILE_TEXT_SIZE);
         fileLayout.addView(textView);
+
+        final ImageView statusImage = new ImageView(getContext());
+        statusImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        fileLayout.addView(statusImage);
+
+        fileImageViewMap.put(deviceFile, statusImage);
+
+        fileLayout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new AlertDialog.Builder(getContext())
+                        .setMessage("Confirm download?")
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int whichButton) {
+                                mListener.downloadFile(deviceFile);
+                            }
+                        })
+                        .setNegativeButton(android.R.string.no, null).show();
+            }
+        });
         return fileLayout;
     }
 
@@ -287,18 +336,13 @@ public class FilesFragment extends Fragment {
         return String.format(Locale.ENGLISH, "%.2f %s", size, fileSizeSuffixes.get(suffixPointer));
     }
 
-        /**
-         * This interface must be implemented by activities that contain this
-         * fragment to allow an interaction in this fragment to be communicated
-         * to the activity and potentially other fragments contained in that
-         * activity.
-         * <p>
-         * See the Android Training lesson <a href=
-         * "http://developer.android.com/training/basics/fragments/communicating.html"
-         * >Communicating with Other Fragments</a> for more information.
-         */
+    /**
+     * This interface must be implemented by activities that contain this
+     * fragment to allow an interaction in this fragment to be communicated
+     * to the activity and potentially other fragments contained in that
+     * activity.
+     */
     public interface FilesFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+        void downloadFile(DeviceFile deviceFile);
     }
 }

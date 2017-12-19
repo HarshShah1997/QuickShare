@@ -59,4 +59,23 @@ public class DeviceFile {
     public void setChildren(List<DeviceFile> children) {
         this.children = children;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        DeviceFile that = (DeviceFile) o;
+
+        if (!fileName.equals(that.fileName)) return false;
+        return fileSize.equals(that.fileSize);
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = fileName.hashCode();
+        result = 31 * result + fileSize.hashCode();
+        return result;
+    }
 }

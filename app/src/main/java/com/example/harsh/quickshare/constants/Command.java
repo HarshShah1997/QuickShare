@@ -10,4 +10,6 @@ public class Command {
     public static final String NEW = "new";
 
     public static final String PRESENT = "present";
+
+    public static final String SEND_FILE = "sendfile";
 }

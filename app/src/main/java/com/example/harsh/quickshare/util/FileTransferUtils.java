@@ -45,6 +45,27 @@ public class FileTransferUtils {
     }
 
     /**
+     * Returns the receiving server socket.
+     *
+     * @return Serversocket from which files can be received
+     */
+    public ServerSocket getReceivingSocket() {
+        return mServerSocket;
+    }
+
+    public String getWriteMode() {
+        return WRITE_MODE;
+    }
+
+    public int getBufferSize() {
+        return BUFFER_SIZE;
+    }
+
+    public String getDownloadDirectory() {
+        return DOWNLOAD_DIRECTORY;
+    }
+
+    /**
      * Sends the part of file starting from offset to the given toIPAddress of transfer request.
      * Amount of file part to be sent is specified by size
      *
@@ -137,7 +158,7 @@ public class FileTransferUtils {
         }
     }
 
-    private void closeInputStream(InputStream inputStream) throws IOException {
+    public void closeInputStream(InputStream inputStream) throws IOException {
         if (inputStream != null) {
             inputStream.close();
         }
@@ -149,13 +170,13 @@ public class FileTransferUtils {
         }
     }
 
-    private void closeFile(RandomAccessFile file) throws IOException {
+    public void closeFile(RandomAccessFile file) throws IOException {
         if (file != null) {
             file.close();
         }
     }
 
-    private void closeSocket(Socket socket) throws IOException {
+    public void closeSocket(Socket socket) throws IOException {
         if (socket != null) {
             socket.close();
         }

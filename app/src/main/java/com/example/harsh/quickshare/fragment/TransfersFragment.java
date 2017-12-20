@@ -7,10 +7,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.example.harsh.quickshare.R;
 import com.example.harsh.quickshare.type.DeviceFile;
+import com.example.harsh.quickshare.type.TransferRequest;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +27,7 @@ public class TransfersFragment extends Fragment {
     private static final float TEXT_SIZE = 22f;
 
     private Map<DeviceFile, LinearLayout> fileViewMap = new HashMap<>();
+    private Map<TransferRequest, ProgressBar> progressBarMap = new HashMap<>();
 
     public TransfersFragment() {
         // Required empty public constructor
@@ -84,10 +87,16 @@ public class TransfersFragment extends Fragment {
     // Generates layout for showing a file download
     private LinearLayout generateFileDownloadLayout(DeviceFile deviceFile, Integer parts) {
         LinearLayout fileDownloadLayout = new LinearLayout(getContext());
+        fileDownloadLayout.setOrientation(LinearLayout.VERTICAL);
+
         TextView textView = new TextView(getContext());
         textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE);
         textView.setText(deviceFile.getFileName());
         fileDownloadLayout.addView(textView);
+
+        LinearLayout downloadProgressLayout = new LinearLayout(getContext());
+        fileDownloadLayout.addView(downloadProgressLayout);
+
         return fileDownloadLayout;
     }
 
@@ -109,6 +118,46 @@ public class TransfersFragment extends Fragment {
                 downloadsLayout.removeView(fileDownloadLayout);
             }
         });
+    }
 
+    /**
+     * Adds layout for indicating part progress.
+     *
+     * @param transferRequest Transfer Request
+     */
+    public void addPartProgress(TransferRequest transferRequest) {
+        if (transferRequest == null) {
+            return;
+        }
+        DeviceFile deviceFile = transferRequest.getDeviceFile();
+        if (fileViewMap.get(deviceFile) == null) {
+            return;
+        }
+        LinearLayout downloadProgressLayout = (LinearLayout) fileViewMap.get(deviceFile).getChildAt(1);
+
+        ProgressBar progressBar = new ProgressBar(getContext(), null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        progressBar.setIndeterminate(false);
+        downloadProgressLayout.addView(progressBar);
+
+        progressBarMap.put(transferRequest, progressBar);
+    }
+
+    /**
+     * Updates the progress bar corresponding to the transfer request.
+     *
+     * @param transferRequest Transfer request
+     * @param progress An integer between 0 to 100 indicating progress percentage
+     */
+    public void updatePartProgress(TransferRequest transferRequest, int progress) {
+        if (transferRequest == null || progress < 0 || progress > 100) {
+            return;
+        }
+        ProgressBar progressBar = progressBarMap.get(transferRequest);
+        if (progressBar == null) {
+            return;
+        }
+        progressBar.setProgress(progress);
     }
 }

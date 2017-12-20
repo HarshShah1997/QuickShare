@@ -285,7 +285,23 @@ public class MainActivity extends AppCompatActivity
      * @param transferRequest Transfer request
      */
     public void partDownloadStarted(TransferRequest transferRequest) {
-        // TODO: Update view for part here
+        if (transferRequest == null) {
+            return;
+        }
+        mTransfersFragment.addPartProgress(transferRequest);
+    }
+
+    /**
+     * Updates the view indicating progress of download
+     *
+     * @param transferRequest Transfer request
+     * @param progress An integer between 0 to 100 indicating percentage of progress
+     */
+    public void updatePartProgress(TransferRequest transferRequest, int progress) {
+        if (transferRequest == null || progress < 0 || progress > 100) {
+            return;
+        }
+        mTransfersFragment.updatePartProgress(transferRequest, progress);
     }
 
     /**

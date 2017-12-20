@@ -21,9 +21,12 @@ import com.example.harsh.quickshare.fragment.FilesFragment;
 import com.example.harsh.quickshare.fragment.HistoryFragment;
 import com.example.harsh.quickshare.fragment.TransfersFragment;
 import com.example.harsh.quickshare.info.DevicesInfo;
+import com.example.harsh.quickshare.info.FileStatusInfo;
+import com.example.harsh.quickshare.task.DownloadTask;
 import com.example.harsh.quickshare.type.Device;
 import com.example.harsh.quickshare.type.DeviceFile;
 import com.example.harsh.quickshare.type.TransferRequest;
+import com.example.harsh.quickshare.type.TransferResult;
 import com.example.harsh.quickshare.util.BroadcastUtils;
 import com.example.harsh.quickshare.util.DeviceUtils;
 import com.example.harsh.quickshare.util.FileTransferUtils;
@@ -67,6 +70,7 @@ public class MainActivity extends AppCompatActivity
 
     // Models
     private DevicesInfo devicesInfo;
+    private FileStatusInfo fileStatusInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -160,13 +164,15 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    // Initializes models and network
+    // Initializes utilities, models and network
     public void init() {
         broadcastUtils = new BroadcastUtils(this);
         deviceUtils = new DeviceUtils();
-        gson = new Gson();
-        devicesInfo = new DevicesInfo();
         fileTransferUtils = new FileTransferUtils();
+        gson = new Gson();
+
+        devicesInfo = new DevicesInfo();
+        fileStatusInfo = new FileStatusInfo();
 
         broadcastUtils.startReceivingBroadcast();
         broadcastUtils.sendBroadcast(Command.NEW);
@@ -237,17 +243,9 @@ public class MainActivity extends AppCompatActivity
             return;
         }
         List<TransferRequest> transferRequests = generateTransferRequests(nodes, deviceFile);
+        fileDownloadStarted(deviceFile, transferRequests.size());
         for (final TransferRequest transferRequest : transferRequests) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        fileTransferUtils.receiveFile(transferRequest);
-                    } catch (IOException e) {
-                        Log.e(TAG, e.getMessage());
-                    }
-                }
-            }).start();
+            new DownloadTask(this, transferRequest, fileTransferUtils).execute();
             sendDownloadRequest(transferRequest);
         }
         // Update file status view here
@@ -273,5 +271,37 @@ public class MainActivity extends AppCompatActivity
         String json = gson.toJson(transferRequest);
         String message = Command.SEND_FILE + json;
         broadcastUtils.sendBroadcast(message);
+    }
+
+    // Updates the model and view to show the file download starting
+    private void fileDownloadStarted(DeviceFile deviceFile, Integer parts) {
+        fileStatusInfo.addFile(deviceFile, parts);
+        mTransfersFragment.addDownloadView(deviceFile, parts);
+    }
+
+    /**
+     * Updates the model and view to indicate starting of a part download
+     *
+     * @param transferRequest Transfer request
+     */
+    public void partDownloadStarted(TransferRequest transferRequest) {
+        // TODO: Update view for part here
+    }
+
+    /**
+     * Updates the model and view to indicate completion of part download
+     *
+     * @param transferResult Transfer Result
+     */
+    public void partDownloadFinished(TransferResult transferResult) {
+        if (transferResult == null) {
+            return;
+        }
+        DeviceFile deviceFile = transferResult.getTransferRequest().getDeviceFile();
+        fileStatusInfo.storeResult(deviceFile, transferResult.getTransferStatus());
+        if (fileStatusInfo.isComplete(deviceFile)) {
+            mTransfersFragment.removeDownloadView(deviceFile);
+            // TODO: Update history here
+        }
     }
 }

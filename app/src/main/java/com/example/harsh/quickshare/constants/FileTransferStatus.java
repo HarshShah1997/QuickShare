@@ -1,4 +1,4 @@
-package com.example.harsh.quickshare.type;
+package com.example.harsh.quickshare.constants;
 
 /**
  * Represents current status of file transfer.

@@ -10,7 +10,6 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -19,14 +18,11 @@ import com.example.harsh.quickshare.activity.MainActivity;
 import com.example.harsh.quickshare.constants.DeviceFileType;
 import com.example.harsh.quickshare.type.Device;
 import com.example.harsh.quickshare.type.DeviceFile;
-import com.example.harsh.quickshare.type.FileTransferStatus;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -48,8 +44,6 @@ public class FilesFragment extends Fragment {
 
     private FilesFragmentInteractionListener mListener;
     private LayoutInflater mLayoutInflator;
-
-    private Map<DeviceFile, ImageView> fileImageViewMap = new HashMap<>();
 
     public FilesFragment() {
         // Required empty public constructor
@@ -101,35 +95,6 @@ public class FilesFragment extends Fragment {
     public void onDetach() {
         super.onDetach();
         mListener = null;
-    }
-
-    /**
-     * Changes the icons displaying file status
-     *
-     * @param deviceFile The file whose status is to be updated
-     * @param status The status, must be a type of FileTransferStatus
-     */
-    public void updateFileStatusView(final DeviceFile deviceFile, final String status) {
-        if (deviceFile == null || status == null) {
-            return;
-        }
-
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                ImageView imageView = fileImageViewMap.get(deviceFile);
-                if (imageView == null) {
-                    return;
-                }
-                if (status.equals(FileTransferStatus.PROGRESS)) {
-                    imageView.setImageResource(R.mipmap.download_progress);
-                } else if (status.equals(FileTransferStatus.SUCCESS)) {
-                    imageView.setImageResource(R.mipmap.download_success);
-                } else if (status.equals(FileTransferStatus.FAILED)) {
-                    imageView.setImageResource(R.mipmap.download_failed);
-                }
-            }
-        });
     }
 
     /**
@@ -271,12 +236,6 @@ public class FilesFragment extends Fragment {
                 + generateFileSizeString(deviceFile.getFileSize()));
         textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, FILE_TEXT_SIZE);
         fileLayout.addView(textView);
-
-        final ImageView statusImage = new ImageView(getContext());
-        statusImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        fileLayout.addView(statusImage);
-
-        fileImageViewMap.put(deviceFile, statusImage);
 
         fileLayout.setOnClickListener(new View.OnClickListener() {
             @Override

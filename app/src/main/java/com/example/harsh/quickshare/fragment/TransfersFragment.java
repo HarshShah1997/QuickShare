@@ -40,19 +40,7 @@ public class TransfersFragment extends Fragment {
      * @return A new instance of fragment TransfersFragment.
      */
     public static TransfersFragment newInstance() {
-        TransfersFragment fragment = new TransfersFragment();
-        Bundle args = new Bundle();
-        // Set the arguments here
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            // Get the arguments here
-        }
+        return new TransfersFragment();
     }
 
     @Override
@@ -66,10 +54,9 @@ public class TransfersFragment extends Fragment {
      * Shows the commencement of file download.
      *
      * @param deviceFile File
-     * @param parts No of parts of file to be downloaded concurrently
      */
-    public void addDownloadView(final DeviceFile deviceFile, final Integer parts) {
-        if (deviceFile == null || parts == null || parts <= 0) {
+    public void addDownloadView(final DeviceFile deviceFile) {
+        if (deviceFile == null) {
             return;
         }
         getActivity().runOnUiThread(new Runnable() {
@@ -77,7 +64,7 @@ public class TransfersFragment extends Fragment {
             public void run() {
                 LinearLayout downloadsLayout = (LinearLayout) getActivity().findViewById(R.id.downloads_layout);
 
-                LinearLayout fileDownloadLayout = generateFileDownloadLayout(deviceFile, parts);
+                LinearLayout fileDownloadLayout = generateFileDownloadLayout(deviceFile);
                 fileViewMap.put(deviceFile, fileDownloadLayout);
                 downloadsLayout.addView(fileDownloadLayout);
             }
@@ -85,7 +72,7 @@ public class TransfersFragment extends Fragment {
     }
 
     // Generates layout for showing a file download
-    private LinearLayout generateFileDownloadLayout(DeviceFile deviceFile, Integer parts) {
+    private LinearLayout generateFileDownloadLayout(DeviceFile deviceFile) {
         LinearLayout fileDownloadLayout = new LinearLayout(getContext());
         fileDownloadLayout.setOrientation(LinearLayout.VERTICAL);
 
@@ -116,6 +103,7 @@ public class TransfersFragment extends Fragment {
 
                 LinearLayout fileDownloadLayout = fileViewMap.get(deviceFile);
                 downloadsLayout.removeView(fileDownloadLayout);
+                fileViewMap.remove(deviceFile);
             }
         });
     }
@@ -148,7 +136,7 @@ public class TransfersFragment extends Fragment {
      * Updates the progress bar corresponding to the transfer request.
      *
      * @param transferRequest Transfer request
-     * @param progress An integer between 0 to 100 indicating progress percentage
+     * @param progress        An integer between 0 to 100 indicating progress percentage
      */
     public void updatePartProgress(TransferRequest transferRequest, int progress) {
         if (transferRequest == null || progress < 0 || progress > 100) {
@@ -159,5 +147,17 @@ public class TransfersFragment extends Fragment {
             return;
         }
         progressBar.setProgress(progress);
+    }
+
+    /**
+     * Clears the memory used for displaying part progress
+     *
+     * @param transferRequest Transfer Request
+     */
+    public void removePartProgress(TransferRequest transferRequest) {
+        if (transferRequest == null) {
+            return;
+        }
+        progressBarMap.remove(transferRequest);
     }
 }

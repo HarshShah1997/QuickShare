@@ -5,7 +5,7 @@ import android.os.Environment;
 import android.util.Log;
 
 import com.example.harsh.quickshare.activity.MainActivity;
-import com.example.harsh.quickshare.constants.FileTransferStatus;
+import com.example.harsh.quickshare.constants.TransferStatus;
 import com.example.harsh.quickshare.type.TransferRequest;
 import com.example.harsh.quickshare.type.TransferResult;
 import com.example.harsh.quickshare.util.FileTransferUtils;
@@ -55,9 +55,9 @@ public class DownloadTask extends AsyncTask<Void, Integer, TransferResult> {
         String status;
         try {
             receiveFile(transferRequest);
-            status = FileTransferStatus.SUCCESS;
+            status = TransferStatus.SUCCESS;
         } catch (IOException e) {
-            status = FileTransferStatus.FAILED;
+            status = TransferStatus.FAILED;
             Log.e(TAG, e.getMessage());
         }
         TransferResult transferResult = new TransferResult();

@@ -1,5 +1,6 @@
 package com.example.harsh.quickshare.info;
 
+import com.example.harsh.quickshare.constants.TransferStatus;
 import com.example.harsh.quickshare.type.DeviceFile;
 
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ import java.util.Map;
  * Created by Harsh on 20-Dec-17.
  */
 
-public class FileStatusInfo {
+public class DownloadStatusInfo {
 
     /**
      * Represents no of parts of a file which will be downloaded concurrently
@@ -39,7 +40,7 @@ public class FileStatusInfo {
      * Stores the result of one of the parts of file downloading.
      *
      * @param deviceFile File
-     * @param result Result, must a one of the FileTransferStatus
+     * @param result Result, must a one of the TransferStatus
      */
     public synchronized void storeResult(DeviceFile deviceFile, String result) {
         if (deviceFile == null || result == null) {
@@ -78,5 +79,27 @@ public class FileStatusInfo {
         }
         fileParts.remove(deviceFile);
         fileStatuses.remove(deviceFile);
+    }
+
+    /**
+     * This method determines the result of a file downloading task
+     *
+     * @param deviceFile File
+     * @return String - A type of file transfer status.
+     */
+    public String getResult(DeviceFile deviceFile) {
+        if (deviceFile == null) {
+            return "";
+        }
+        List<String> deviceFileStatuses = fileStatuses.get(deviceFile);
+        if (deviceFileStatuses == null || deviceFileStatuses.size() == 0) {
+            return "";
+        }
+        for (String status : deviceFileStatuses) {
+            if (status.equals(TransferStatus.FAILED)) {
+                return TransferStatus.FAILED;
+            }
+        }
+        return TransferStatus.SUCCESS;
     }
 }

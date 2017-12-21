@@ -55,7 +55,7 @@ public class DevicesInfo {
 
     /**
      * Removes the device and its corresponding file.
-     * 
+     *
      * @param device The device to be removed
      */
     public void removeDevice(Device device) {

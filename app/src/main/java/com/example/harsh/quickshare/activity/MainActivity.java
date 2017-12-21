@@ -21,7 +21,8 @@ import com.example.harsh.quickshare.fragment.FilesFragment;
 import com.example.harsh.quickshare.fragment.HistoryFragment;
 import com.example.harsh.quickshare.fragment.TransfersFragment;
 import com.example.harsh.quickshare.info.DevicesInfo;
-import com.example.harsh.quickshare.info.FileStatusInfo;
+import com.example.harsh.quickshare.info.DownloadStatusInfo;
+import com.example.harsh.quickshare.info.TransferHistoryInfo;
 import com.example.harsh.quickshare.task.DownloadTask;
 import com.example.harsh.quickshare.type.Device;
 import com.example.harsh.quickshare.type.DeviceFile;
@@ -40,6 +41,8 @@ public class MainActivity extends AppCompatActivity
         implements FilesFragment.FilesFragmentInteractionListener, BroadcastUtils.IncomingPacketListener {
 
     private static final String TAG = "MainActivity";
+
+    private boolean isInitialized = false;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -70,7 +73,8 @@ public class MainActivity extends AppCompatActivity
 
     // Models
     private DevicesInfo devicesInfo;
-    private FileStatusInfo fileStatusInfo;
+    private DownloadStatusInfo downloadStatusInfo;
+    private TransferHistoryInfo transferHistoryInfo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +90,7 @@ public class MainActivity extends AppCompatActivity
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
+        mViewPager.setOffscreenPageLimit(2);
 
         //Initializing the tablayout
         TabLayout tabLayout = (TabLayout) findViewById(R.id.tablayout);
@@ -166,16 +171,17 @@ public class MainActivity extends AppCompatActivity
 
     // Initializes utilities, models and network
     public void init() {
-        broadcastUtils = new BroadcastUtils(this);
-        deviceUtils = new DeviceUtils();
-        fileTransferUtils = new FileTransferUtils();
-        gson = new Gson();
+            broadcastUtils = new BroadcastUtils(this);
+            deviceUtils = new DeviceUtils();
+            fileTransferUtils = new FileTransferUtils();
+            gson = new Gson();
 
-        devicesInfo = new DevicesInfo();
-        fileStatusInfo = new FileStatusInfo();
+            devicesInfo = new DevicesInfo();
+            downloadStatusInfo = new DownloadStatusInfo();
+            transferHistoryInfo = new TransferHistoryInfo();
 
-        broadcastUtils.startReceivingBroadcast();
-        broadcastUtils.sendBroadcast(Command.NEW);
+            broadcastUtils.startReceivingBroadcast();
+            broadcastUtils.sendBroadcast(Command.NEW);
     }
 
     @Override
@@ -246,9 +252,8 @@ public class MainActivity extends AppCompatActivity
         fileDownloadStarted(deviceFile, transferRequests.size());
         for (final TransferRequest transferRequest : transferRequests) {
             new DownloadTask(this, transferRequest, fileTransferUtils).execute();
-            sendDownloadRequest(transferRequest);
+            broadcastUploadRequest(transferRequest);
         }
-        // Update file status view here
     }
 
     // Generates download requests to be sent to the devices
@@ -267,7 +272,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     // Broadcasts download request along with command
-    private void sendDownloadRequest(TransferRequest transferRequest) {
+    private void broadcastUploadRequest(TransferRequest transferRequest) {
         String json = gson.toJson(transferRequest);
         String message = Command.SEND_FILE + json;
         broadcastUtils.sendBroadcast(message);
@@ -275,8 +280,8 @@ public class MainActivity extends AppCompatActivity
 
     // Updates the model and view to show the file download starting
     private void fileDownloadStarted(DeviceFile deviceFile, Integer parts) {
-        fileStatusInfo.addFile(deviceFile, parts);
-        mTransfersFragment.addDownloadView(deviceFile, parts);
+        downloadStatusInfo.addFile(deviceFile, parts);
+        mTransfersFragment.addDownloadView(deviceFile);
     }
 
     /**
@@ -314,10 +319,20 @@ public class MainActivity extends AppCompatActivity
             return;
         }
         DeviceFile deviceFile = transferResult.getTransferRequest().getDeviceFile();
-        fileStatusInfo.storeResult(deviceFile, transferResult.getTransferStatus());
-        if (fileStatusInfo.isComplete(deviceFile)) {
-            mTransfersFragment.removeDownloadView(deviceFile);
-            // TODO: Update history here
+        downloadStatusInfo.storeResult(deviceFile, transferResult.getTransferStatus());
+        mTransfersFragment.removePartProgress(transferResult.getTransferRequest());
+        if (downloadStatusInfo.isComplete(deviceFile)) {
+            String fileDownloadingResult = downloadStatusInfo.getResult(deviceFile);
+            downloadStatusInfo.removeFile(deviceFile);
+            fileDownloadCompleted(deviceFile, fileDownloadingResult);
         }
+    }
+
+    // Performs steps necessary after completion of file download
+    private void fileDownloadCompleted(DeviceFile deviceFile, String result) {
+        mTransfersFragment.removeDownloadView(deviceFile);
+        transferHistoryInfo.addDownloadHistory(deviceFile.getFileName(), result);
+        Log.d(TAG, result);
+        mHistoryFragment.addDownloadHistoryView(deviceFile.getFileName(), result);
     }
 }
